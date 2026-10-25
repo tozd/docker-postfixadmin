@@ -1,0 +1,41 @@
+# Postfix Admin uses secure session cookies when the HTTPS FastCGI parameter is set, so we set it also when
+# a reverse proxy in front of the container terminates TLS.
+map $http_x_forwarded_proto $postfixadmin_https {
+    default $https;
+    https on;
+}
+
+server {
+    listen 80 default_server;
+    server_name _;
+
+    absolute_redirect off;
+
+    root /var/www;
+
+    location / {
+        return 404;
+    }
+
+    location ~ /\. {
+        return 403;
+    }
+
+    location = /postfixadmin {
+        return 301 /postfixadmin/;
+    }
+
+    location /postfixadmin/ {
+        index index.php;
+    }
+
+    location ~ ^/postfixadmin/(users/)?[A-Za-z0-9_-]+\.php$ {
+        include fastcgi_php;
+        fastcgi_param SCRIPT_FILENAME $document_root$fastcgi_script_name;
+        fastcgi_param HTTPS $postfixadmin_https if_not_empty;
+    }
+
+    location ~ \.php(/|$) {
+        return 404;
+    }
+}

@@ -1,0 +1,12 @@
+# Volumes can be mounted empty and owned by root.
+mkdir -p /var/lib/postfixadmin
+chown fcgi-php:fcgi-php /var/lib/postfixadmin
+
+# Postfix Admin uses a SQLite database only if its file already exists. The configuration is read in a separate
+# process because Postfix Admin itself has to be the first to load it.
+SQLITE_FILE=$(chpst -u fcgi-php /usr/bin/php -r 'require "/usr/share/postfixadmin/config.inc.php"; if ($CONF["database_type"] === "sqlite") echo $CONF["database_name"];')
+if [ -n "${SQLITE_FILE}" ] && [ ! -e "${SQLITE_FILE}" ]; then
+  chpst -u fcgi-php touch "${SQLITE_FILE}"
+fi
+
+chpst -u "fcgi-php:$(id -Gn fcgi-php | tr ' ' ':')" /usr/bin/php /usr/local/lib/postfixadmin/db-upgrade.php
